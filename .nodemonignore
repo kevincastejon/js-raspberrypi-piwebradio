@@ -1,0 +1,6 @@
+/package.json
+/package-lock.json
+/.nodemonignore
+/.eslintrc.js
+/node_modules
+/.babelrc
