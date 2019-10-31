@@ -2,7 +2,7 @@
   "name": "piwebradio",
   "version": "1.0.0",
   "description": "Control and monitor your PiWebRadio DIY device",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "author": "kevincastejon",
   "license": "MIT",
   "private": false,
