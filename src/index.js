@@ -36,17 +36,17 @@ class Radio {
       height: config.lcdHeight,
       address: config.lcdAddress,
     });
-    this.rotary = new Rotary(convert(`wiringPi${config.rotaryPinA}`, 'physical'),
-      convert(`wiringPi${config.rotaryPinB}`, 'physical'),
-      convert(`wiringPi${config.rotaryPinButton}`, 'physical'));
+    this.rotary = new Rotary(convert(`physical${config.rotaryPinA}`, 'wiringPi'),
+      convert(`physical${config.rotaryPinB}`, 'wiringPi'),
+      convert(`physical${config.rotaryPinButton}`, 'wiringPi'));
     gpio.setup(26, gpio.DIR_IN, gpio.EDGE_BOTH);
     this.radios = null;
     this.playingRadio = 0;
     this.pickingRadio = 0;
     this.pickTimer = null;
     this.volumeTimer = null;
-    maxVolume = config.startingVolume;
-    this.volume = maxVolume;
+    maxVolume = config.volumeLimiter;
+    this.volume = config.startingVolume;
     this.muteMode = false;
     this.displayWIFIMode = false;
     this.init(config.radios);
@@ -66,6 +66,7 @@ class Radio {
         }
       }
     });
+    omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
     this.refreshRadios(radios);
   }
 
