@@ -154,7 +154,8 @@ class Radio {
       player.child.stdout.on('data', (data) => {
         const line = data.toString();
         if (line.includes('ICY-META: StreamTitle=')) {
-          title = line.split('ICY-META: StreamTitle=')[1];
+          const pretitle = line.split('ICY-META: StreamTitle=')[1].substring(1);
+          title = pretitle.substring(0, pretitle.length - 2);
         }
       });
     });
