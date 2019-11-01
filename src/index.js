@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import '@babel/polyfill';
 
-import omx from 'omx-interface';
+import mpg from 'mpg123';
 import Rotary from 'raspberrypi-rotary-encoder';
 import i2c from 'i2c-bus';
 import Oled from 'oled-i2c-bus';
@@ -11,6 +11,7 @@ import gpio from 'rpi-gpio';
 import { exec } from 'child_process';
 import convert from '@daisy-electronics/pin-converter';
 
+let player = null;
 let maxVolume = null;
 let wifiDisplayTimeout = null;
 let lastMuteBtnVal = null;
@@ -66,7 +67,6 @@ class Radio {
         }
       }
     });
-    omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
     this.refreshRadios(radios);
   }
 
@@ -88,13 +88,13 @@ class Radio {
     if (this.muteMode) {
       this.muteMode = false;
       this.display(this.radios[this.playingRadio].name);
-      omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
+      player.volume(parseInt((this.volume * maxVolume) / 100, 10));
     } else {
       this.muteMode = true;
       this.clearPickTimer();
       this.clearVolumeTimer();
       this.display('MUTE');
-      omx.setVolume(0);
+      player.volume(0);
     }
   }
 
@@ -127,7 +127,12 @@ class Radio {
 
   async play(radioId) {
     this.playingRadio = radioId;
-    omx.open(this.radios[radioId].url);
+    if (player) {
+      player.close();
+    }
+    player = new mpg.MpgPlayer();
+    player.volume(parseInt((this.volume * maxVolume) / 100, 10));
+    player.play(this.radios[radioId].url);
     this.display(this.radios[this.playingRadio].name);
   }
 
@@ -141,7 +146,7 @@ class Radio {
     this.volume = volume;
     this.volume = this.volume > 100 ? 100 : this.volume;
     this.volume = this.volume < 0 ? 0 : this.volume;
-    omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
+    player.volume(parseInt((this.volume * maxVolume) / 100, 10));
     this.display(`Volume: ${this.volume}%`);
     this.renewVolumeTimer();
   }
@@ -185,7 +190,10 @@ class Radio {
   }
 
   async refreshRadios(radios) {
-    omx.stop();
+    if (player) {
+      player.close();
+      player = null;
+    }
     this.radios = radios.concat();
     this.pickingRadio = 0;
     this.clearPickTimer();
