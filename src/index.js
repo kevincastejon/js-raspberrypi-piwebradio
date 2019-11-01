@@ -86,7 +86,7 @@ class Radio {
   onMutePress() {
     if (this.muteMode) {
       this.muteMode = false;
-      this.display(this.radios[this.playingRadio]);
+      this.display(this.radios[this.playingRadio].name);
       omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
     } else {
       this.muteMode = true;
@@ -120,19 +120,19 @@ class Radio {
       }
     } else {
       this.displayWIFIMode = false;
-      this.display(this.radios[this.playingRadio]);
+      this.display(this.radios[this.playingRadio].name);
     }
   }
 
   async play(radioId) {
     this.playingRadio = radioId;
     omx.open(this.radios[radioId].url);
-    this.display(this.radios[this.playingRadio]);
+    this.display(this.radios[this.playingRadio].name);
   }
 
   pick(radioId) {
     this.pickingRadio = radioId;
-    this.display(this.radios[radioId], this.pickingRadio);
+    this.display(this.radios[radioId].name, this.pickingRadio);
     this.renewPickTimer();
   }
 
@@ -165,7 +165,7 @@ class Radio {
   renewPickTimer() {
     this.clearPickTimer();
     this.pickTimer = setTimeout(() => {
-      this.display(this.radios[this.playingRadio]);
+      this.display(this.radios[this.playingRadio].name);
     }, 6000);
   }
 
@@ -179,7 +179,7 @@ class Radio {
   renewVolumeTimer() {
     this.clearVolumeTimer();
     this.volumeTimer = setTimeout(() => {
-      this.display(this.radios[this.playingRadio]);
+      this.display(this.radios[this.playingRadio].name);
     }, 3000);
   }
 
