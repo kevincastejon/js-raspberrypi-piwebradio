@@ -93,7 +93,7 @@ class Radio {
     wifiDisplayTimeout = setTimeout(() => {
       this.displayWIFIMode = true;
       exec('iwgetid', (error, stdout) => {
-        this.display(stdout.split('ESSID:')[1], -1, true);
+        this.display(stdout.split('ESSID:')[1], -1, true, 1);
       });
     }, 2000);
   }
@@ -121,7 +121,7 @@ class Radio {
   onPress() {
     titleDisplayTimeout = setTimeout(() => {
       this.displayTitleMode = true;
-      this.display(title, -1, true);
+      this.display(title, -1, true, 1);
     }, 2000);
   }
 
@@ -179,14 +179,14 @@ class Radio {
     this.renewVolumeTimer();
   }
 
-  display(message, number = -1, firstLineText = false) {
+  display(message, number = -1, firstLineText = false, size = 2) {
     this.oled.clearDisplay();
     if (number > -1) {
       this.oled.setCursor(1, 1);
       this.oled.writeString(font, 2, number.toString(10), 1, false);
     }
     this.oled.setCursor(1, firstLineText ? 1 : 24);
-    this.oled.writeString(font, 2, message, 1, true);
+    this.oled.writeString(font, size, message, 1, true);
   }
 
   clearPickTimer() {
