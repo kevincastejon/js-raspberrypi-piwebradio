@@ -11,9 +11,11 @@ import gpio from 'rpi-gpio';
 import { exec } from 'child_process';
 import convert from '@daisy-electronics/pin-converter';
 
+let title = 'no info';
 let player = null;
 let maxVolume = null;
 let wifiDisplayTimeout = null;
+let titleDisplayTimeout = null;
 let lastMuteBtnVal = null;
 
 
@@ -50,6 +52,7 @@ class Radio {
     this.volume = config.startingVolume;
     this.muteMode = false;
     this.displayWIFIMode = false;
+    this.displayTitleMode = false;
     this.init(config.radios);
   }
 
@@ -63,6 +66,8 @@ class Radio {
       if (lastMuteBtnVal !== value) {
         lastMuteBtnVal = value;
         if (value) {
+          this.onMuteRelease();
+        } else {
           this.onMutePress();
         }
       }
@@ -85,31 +90,44 @@ class Radio {
   }
 
   onMutePress() {
-    if (this.muteMode) {
-      this.muteMode = false;
-      this.display(this.radios[this.playingRadio].name);
-      player.volume(parseInt((this.volume * maxVolume) / 100, 10));
-    } else {
-      this.muteMode = true;
-      this.clearPickTimer();
-      this.clearVolumeTimer();
-      this.display('MUTE');
-      player.volume(0);
-    }
-  }
-
-  onPress() {
     wifiDisplayTimeout = setTimeout(() => {
       this.displayWIFIMode = true;
       exec('iwgetid', (error, stdout) => {
-        this.display(stdout.split('ESSID:')[1]);
+        this.display(stdout.split('ESSID:')[1], -1, true);
       });
     }, 2000);
   }
 
-  onRelease() {
+  onMuteRelease() {
     clearTimeout(wifiDisplayTimeout);
     if (!this.displayWIFIMode) {
+      if (this.muteMode) {
+        this.muteMode = false;
+        this.display(this.radios[this.playingRadio].name);
+        player.volume(parseInt((this.volume * maxVolume) / 100, 10));
+      } else {
+        this.muteMode = true;
+        this.clearPickTimer();
+        this.clearVolumeTimer();
+        this.display('MUTE');
+        player.volume(0);
+      }
+    } else {
+      this.displayWIFIMode = false;
+      this.display(this.radios[this.playingRadio].name);
+    }
+  }
+
+  onPress() {
+    titleDisplayTimeout = setTimeout(() => {
+      this.displayTitleMode = true;
+      this.display(title, -1, true);
+    }, 2000);
+  }
+
+  onRelease() {
+    clearTimeout(titleDisplayTimeout);
+    if (!this.displayTitleMode) {
       if (!this.muteMode) {
         if (this.pickTimer) {
           this.play(this.pickingRadio);
@@ -120,7 +138,7 @@ class Radio {
         }
       }
     } else {
-      this.displayWIFIMode = false;
+      this.displayTitleMode = false;
       this.display(this.radios[this.playingRadio].name);
     }
   }
@@ -131,6 +149,15 @@ class Radio {
       player.close();
     }
     player = new mpg.MpgPlayer();
+    title = 'no info';
+    player.on('format', () => {
+      player.child.stdout.on('data', (data) => {
+        const line = data.toString();
+        if (line.includes('ICY-META: StreamTitle=')) {
+          title = line.split('ICY-META: StreamTitle=')[1];
+        }
+      });
+    });
     player.volume(parseInt((this.volume * maxVolume) / 100, 10));
     player.play(this.radios[radioId].url);
     this.display(this.radios[this.playingRadio].name);
@@ -151,13 +178,13 @@ class Radio {
     this.renewVolumeTimer();
   }
 
-  display(message, number = -1) {
+  display(message, number = -1, firstLineText = false) {
     this.oled.clearDisplay();
     if (number > -1) {
       this.oled.setCursor(1, 1);
       this.oled.writeString(font, 2, number.toString(10), 1, false);
     }
-    this.oled.setCursor(1, 24);
+    this.oled.setCursor(1, firstLineText ? 1 : 24);
     this.oled.writeString(font, 2, message, 1, true);
   }
 
