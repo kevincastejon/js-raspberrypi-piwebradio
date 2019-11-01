@@ -2,10 +2,8 @@
 import 'dotenv/config';
 import '@babel/polyfill';
 
-import { MPC } from 'mpc-js';
+import omx from 'omx-interface';
 import Rotary from 'raspberrypi-rotary-encoder';
-import { promises as fs } from 'fs';
-import path from 'path';
 import i2c from 'i2c-bus';
 import Oled from 'oled-i2c-bus';
 import font from 'oled-font-5x7';
@@ -31,8 +29,8 @@ class Radio {
       lcdI2CBus: pConfig.lcdI2CBus || 1,
       startingVolume: pConfig.startingVolume || 50,
       volumeLimiter: pConfig.volumeLimiter || 80,
+      radios: pConfig.radios || [],
     };
-    this.mpc = new MPC();
     this.oled = new Oled(i2c.openSync(config.lcdI2CBus), {
       width: config.lcdWidth,
       height: config.lcdHeight,
@@ -51,13 +49,10 @@ class Radio {
     this.volume = maxVolume;
     this.muteMode = false;
     this.displayWIFIMode = false;
-    this.init();
+    this.init(config.radios);
   }
 
-  async init() {
-    this.mpc.connectTCP('localhost', 6600);
-    await this.mpc.playback.stop();
-    await this.mpc.playbackOptions.setVolume(this.volume);
+  async init(radios) {
     this.oled.clearDisplay();
     this.oled.stopScroll();
     this.rotary.on('rotate', (delta) => this.onRotate(delta));
@@ -71,7 +66,7 @@ class Radio {
         }
       }
     });
-    this.refreshRadios();
+    this.refreshRadios(radios);
   }
 
   onRotate(delta) {
@@ -92,13 +87,13 @@ class Radio {
     if (this.muteMode) {
       this.muteMode = false;
       this.display(this.radios[this.playingRadio]);
-      this.mpc.playbackOptions.setVolume(this.volume);
+      omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
     } else {
       this.muteMode = true;
       this.clearPickTimer();
       this.clearVolumeTimer();
       this.display('MUTE');
-      this.mpc.playbackOptions.setVolume(0);
+      omx.setVolume(0);
     }
   }
 
@@ -131,8 +126,7 @@ class Radio {
 
   async play(radioId) {
     this.playingRadio = radioId;
-    await this.mpc.playback.stop();
-    await this.mpc.playback.play(radioId);
+    omx.open(this.radios[radioId].url);
     this.display(this.radios[this.playingRadio]);
   }
 
@@ -146,7 +140,7 @@ class Radio {
     this.volume = volume;
     this.volume = this.volume > 100 ? 100 : this.volume;
     this.volume = this.volume < 0 ? 0 : this.volume;
-    await this.mpc.playbackOptions.setVolume(parseInt((this.volume * maxVolume) / 100, 10));
+    omx.setVolume(parseInt((this.volume * maxVolume) / 100, 10) / 100);
     this.display(`Volume: ${this.volume}%`);
     this.renewVolumeTimer();
   }
@@ -189,11 +183,9 @@ class Radio {
     }, 3000);
   }
 
-  async refreshRadios() {
-    await this.mpc.playback.stop();
-    await this.mpc.currentPlaylist.clear();
-    await this.mpc.storedPlaylists.load('radios');
-    this.radios = JSON.parse(await fs.readFile(path.resolve(__dirname, 'files', 'radios.json'))).radios.map((r) => r.name);
+  async refreshRadios(radios) {
+    omx.stop();
+    this.radios = radios.concat();
     this.pickingRadio = 0;
     this.clearPickTimer();
     this.clearVolumeTimer();
