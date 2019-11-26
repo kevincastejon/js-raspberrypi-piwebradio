@@ -35,3 +35,21 @@ yarn start
 
 - refreshRadios(radios)         Will refresh the 'radios' playlist
   - radios : []string             An array of radio names. It must match the .m3u file content used by MPD server. Required.
+
+
+### Wiring
+
+Volume knob + : 1
+Volume knob - : 9
+Volume knob CLOCK : 11
+Volume knob DATA : 13
+Volume knob SWITCH : 15
+Select knob + : 17
+Select knob - : 14
+Select knob CLOCK : 16
+Select knob DATA : 18
+Select knob SWITCH : 22
+Screen + : 1
+Screen - : 1
+Screen SDA : 3
+Screen SCL : 5 

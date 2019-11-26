@@ -1,31 +1,43 @@
-// You should create a .env file at the project root to use env variables
-import 'dotenv/config';
-import '@babel/polyfill';
+// const '@babel/polyfill';
+const mpg = require('mpg123');
+const Rotary = require('raspberrypi-rotary-encoder');
+const i2c = require('i2c-bus');
+const Oled = require('oled-i2c-bus');
+const font = require('oled-font-5x7');
+const convert = require('@daisy-electronics/pin-converter');
+const IsItConnected = require('is-it-connected');
+// Components
+let player; // Sound
+let oled; // Screen
+let volumeKnob; // Volume knob
+let channelKnob; // Channel knob
 
-import mpg from 'mpg123';
-import Rotary from 'raspberrypi-rotary-encoder';
-import i2c from 'i2c-bus';
-import Oled from 'oled-i2c-bus';
-import font from 'oled-font-5x7';
-import gpio from 'rpi-gpio';
-import { exec } from 'child_process';
-import convert from '@daisy-electronics/pin-converter';
+// Timers
+const timerModes = { volume: 'volume', pick: 'pick', title: 'title' };
+let timerMode = null;
+let displayTimer = null;
+let debugTimer = null; // Force reloading radios when holding channel knob
 
-let title = 'no info';
-let player = null;
-let maxVolume = null;
-let wifiDisplayTimeout = null;
-let titleDisplayTimeout = null;
-let lastMuteBtnVal = null;
-
+// Store
+let radios = null; // Array of radios object {name, url}
+let title = 'no info'; // Last title info received
+let playingRadio = 0; // Currently playing radio index (related to 'radios' array)
+let pickingRadio = 0; // Currently displaying radio index (when using channel knob)
+let muted = false; // Muted state
+let volume; // Current volume [0-100]
+let backupVolume; // Current volume [0-100]
+let maxVolume; // Volume limiter (set with the config below) that creates a transparent scale
+let config; // Hardware and starting config
 
 class Radio {
   constructor(pConfig = {}) {
-    const config = {
-      rotaryPinA: pConfig.rotaryPinA || 11,
-      rotaryPinB: pConfig.rotaryPinB || 12,
-      rotaryPinButton: pConfig.rotaryPinButton || 13,
-      muteButtonPin: pConfig.muteButtonPin || 26,
+    config = {
+      volumeKnobPinA: pConfig.volumeKnobPinA || 11,
+      volumeKnobPinB: pConfig.volumeKnobPinB || 13,
+      volumeKnobPinButton: pConfig.volumeKnobPinButton || 15,
+      channelKnobPinA: pConfig.channelKnobPinA || 16,
+      channelKnobPinB: pConfig.channelKnobPinB || 18,
+      channelKnobPinButton: pConfig.channelKnobPinButton || 22,
       lcdWidth: pConfig.lcdWidth || 128,
       lcdHeight: pConfig.lcdHeight || 64,
       lcdAddress: pConfig.lcdAddress || 0x3C,
@@ -34,122 +46,85 @@ class Radio {
       volumeLimiter: pConfig.volumeLimiter || 80,
       radios: pConfig.radios || [],
     };
-    this.oled = new Oled(i2c.openSync(config.lcdI2CBus), {
+    oled = new Oled(i2c.openSync(config.lcdI2CBus), {
       width: config.lcdWidth,
       height: config.lcdHeight,
       address: config.lcdAddress,
     });
-    this.rotary = new Rotary(convert(`physical${config.rotaryPinA}`, 'wiringPi'),
-      convert(`physical${config.rotaryPinB}`, 'wiringPi'),
-      convert(`physical${config.rotaryPinButton}`, 'wiringPi'));
-    gpio.setup(26, gpio.DIR_IN, gpio.EDGE_BOTH);
-    this.radios = null;
-    this.playingRadio = 0;
-    this.pickingRadio = 0;
-    this.pickTimer = null;
-    this.volumeTimer = null;
+    volumeKnob = new Rotary(convert(`physical${config.volumeKnobPinA}`, 'wiringPi'),
+      convert(`physical${config.volumeKnobPinB}`, 'wiringPi'),
+      convert(`physical${config.volumeKnobPinButton}`, 'wiringPi'));
+    channelKnob = new Rotary(convert(`physical${config.channelKnobPinA}`, 'wiringPi'),
+      convert(`physical${config.channelKnobPinB}`, 'wiringPi'),
+      convert(`physical${config.channelKnobPinButton}`, 'wiringPi'));
     maxVolume = config.volumeLimiter;
-    this.volume = config.startingVolume;
-    this.muteMode = false;
-    this.displayWIFIMode = false;
-    this.displayTitleMode = false;
-    this.init(config.radios);
-  }
-
-  async init(radios) {
-    this.oled.clearDisplay();
-    this.oled.stopScroll();
-    this.rotary.on('rotate', (delta) => this.onRotate(delta));
-    this.rotary.on('pressed', () => this.onPress());
-    this.rotary.on('released', () => this.onRelease());
-    gpio.on('change', (channel, value) => {
-      if (lastMuteBtnVal !== value) {
-        lastMuteBtnVal = value;
-        if (value) {
-          this.onMuteRelease();
+    volume = config.startingVolume;
+    oled.clearDisplay();
+    oled.stopScroll();
+    volumeKnob.on('rotate', (delta) => {
+      if (!muted && radios.length > 0) {
+        this.setVolumeAndDisplay(volume + delta);
+      }
+    });
+    volumeKnob.on('released', () => {
+      if (!muted) {
+        this.mute();
+      } else {
+        this.unmute();
+      }
+    });
+    channelKnob.on('rotate', (delta) => {
+      if (!muted && radios.length > 0) {
+        let ind;
+        if (delta > 0) {
+          ind = pickingRadio + 1 > radios.length - 1 ? 0 : pickingRadio + 1;
         } else {
-          this.onMutePress();
+          ind = pickingRadio - 1 < 0 ? radios.length - 1 : pickingRadio - 1;
+        }
+        this.pick(ind);
+      }
+    });
+    channelKnob.on('pressed', () => {
+      debugTimer = setTimeout(() => {
+        debugTimer = null;
+        this.refreshRadios(radios);
+      }, 4000);
+    });
+    channelKnob.on('released', () => {
+      if (debugTimer && !muted && radios.length > 0) {
+        clearTimeout(debugTimer);
+        debugTimer = null;
+        if (pickingRadio === playingRadio) {
+          this.showTitle();
+        } else {
+          this.play(pickingRadio);
         }
       }
     });
-    this.refreshRadios(radios);
-  }
-
-  onRotate(delta) {
-    if (!this.muteMode) {
-      if (this.pickTimer) {
-        if (delta > 0) {
-          this.pick(this.pickingRadio + 1 > this.radios.length - 1 ? 0 : this.pickingRadio + 1);
-        } else {
-          this.pick(this.pickingRadio - 1 < 0 ? this.radios.length - 1 : this.pickingRadio - 1);
-        }
-      } else {
-        this.setVolume(this.volume + delta * 2);
-      }
-    }
-  }
-
-  onMutePress() {
-    wifiDisplayTimeout = setTimeout(() => {
-      this.displayWIFIMode = true;
-      exec('iwgetid', (error, stdout) => {
-        this.display(stdout.split('ESSID:')[1], -1, true, 1);
-      });
-    }, 2000);
-  }
-
-  onMuteRelease() {
-    clearTimeout(wifiDisplayTimeout);
-    if (!this.displayWIFIMode) {
-      if (this.muteMode) {
-        this.muteMode = false;
-        this.display(this.radios[this.playingRadio].name);
-        player.volume(parseInt((this.volume * maxVolume) / 100, 10));
-      } else {
-        this.muteMode = true;
-        this.clearPickTimer();
-        this.clearVolumeTimer();
-        this.display('MUTE');
-        player.volume(0);
-      }
-    } else {
-      this.displayWIFIMode = false;
-      this.display(this.radios[this.playingRadio].name);
-    }
-  }
-
-  onPress() {
-    titleDisplayTimeout = setTimeout(() => {
-      this.displayTitleMode = true;
-      this.display(title, -1, true, 1);
-    }, 2000);
-  }
-
-  onRelease() {
-    clearTimeout(titleDisplayTimeout);
-    if (!this.displayTitleMode) {
-      if (!this.muteMode) {
-        if (this.pickTimer) {
-          this.play(this.pickingRadio);
-          this.clearPickTimer();
-        } else {
-          this.clearVolumeTimer();
-          this.pick(this.pickingRadio);
-        }
-      }
-    } else {
-      this.displayTitleMode = false;
-      this.display(this.radios[this.playingRadio].name);
-    }
+    radios = config.radios;
+    IsItConnected.on('online', () => {
+      console.log('online');
+      this.refreshRadios(radios);
+    });
+    IsItConnected.on('offline', () => {
+      console.log('offline');
+      this.refreshDisplay();
+    });
+    IsItConnected.watch();
   }
 
   async play(radioId) {
-    this.playingRadio = radioId;
+    this.clearTimer(false);
+    playingRadio = radioId;
     if (player) {
+      player.removeAllListeners('format');
       player.close();
     }
     player = new mpg.MpgPlayer();
     title = 'no info';
+    player.on('error', (error) => {
+      console.log(error);
+    });
     player.on('format', () => {
       player.child.stdout.on('data', (data) => {
         const line = data.toString();
@@ -159,74 +134,129 @@ class Radio {
         }
       });
     });
-    player.volume(parseInt((this.volume * maxVolume) / 100, 10));
-    player.play(this.radios[radioId].url);
-    this.display(this.radios[this.playingRadio].name);
+    this.setVolume(volume);
+    player.play(radios[playingRadio].url);
+    this.refreshDisplay();
   }
 
   pick(radioId) {
-    this.pickingRadio = radioId;
-    this.display(this.radios[radioId].name, this.pickingRadio);
-    this.renewPickTimer();
+    pickingRadio = radioId;
+    this.setTimer(timerModes.pick, 3000);
   }
 
-  async setVolume(volume) {
-    this.volume = volume;
-    this.volume = this.volume > 100 ? 100 : this.volume;
-    this.volume = this.volume < 0 ? 0 : this.volume;
-    player.volume(parseInt((this.volume * maxVolume) / 100, 10));
-    this.display(`Volume: ${this.volume}%`);
-    this.renewVolumeTimer();
+  showTitle() {
+    console.log('showTitle');
+    this.setTimer(timerModes.title, 3000);
   }
 
-  display(message, number = -1, firstLineText = false, size = 2) {
-    this.oled.clearDisplay();
-    if (number > -1) {
-      this.oled.setCursor(1, 1);
-      this.oled.writeString(font, 2, number.toString(10), 1, false);
-    }
-    this.oled.setCursor(1, firstLineText ? 1 : 24);
-    this.oled.writeString(font, size, message, 1, true);
-  }
-
-  clearPickTimer() {
-    if (this.pickTimer) {
-      clearTimeout(this.pickTimer);
-      this.pickTimer = null;
+  setVolume(pVolume) {
+    volume = pVolume;
+    volume = volume > 100 ? 100 : volume;
+    volume = volume < 0 ? 0 : volume;
+    if (player) {
+      player.volume(parseInt((volume * maxVolume) / 100, 10));
     }
   }
 
-  renewPickTimer() {
-    this.clearPickTimer();
-    this.pickTimer = setTimeout(() => {
-      this.display(this.radios[this.playingRadio].name);
-    }, 6000);
+  setVolumeAndDisplay(pVolume) {
+    this.setVolume(pVolume);
+    this.setTimer(timerModes.volume, 3000);
   }
 
-  clearVolumeTimer() {
-    if (this.volumeTimer) {
-      clearTimeout(this.volumeTimer);
-      this.volumeTimer = null;
+  mute() {
+    if (!muted) {
+      this.clearTimer(false);
+      backupVolume = volume;
+      this.setVolume(0);
+      muted = true;
+      this.refreshDisplay();
     }
   }
 
-  renewVolumeTimer() {
-    this.clearVolumeTimer();
-    this.volumeTimer = setTimeout(() => {
-      this.display(this.radios[this.playingRadio].name);
-    }, 3000);
+  unmute() {
+    if (muted) {
+      this.clearTimer(false);
+      this.setVolume(backupVolume);
+      backupVolume = null;
+      muted = false;
+      this.refreshDisplay();
+    }
   }
 
-  async refreshRadios(radios) {
+  refreshDisplay() {
+    oled.clearDisplay();
+    if (radios.length > 0) {
+      if (!IsItConnected.connected) {
+        oled.setCursor(1, 24);
+        oled.writeString(font, 2, 'NO INTERNET', 1, true);
+      } else if (muted) {
+        oled.setCursor(1, 24);
+        oled.writeString(font, 2, 'MUTE', 1, true);
+      } else if (!timerMode) {
+        oled.setCursor(1, 24);
+        oled.writeString(font, 2, radios[playingRadio].name, 1, true);
+      } else if (timerMode === timerModes.volume) {
+        oled.setCursor(1, 24);
+        oled.writeString(font, 2, `Vol:${volume}`, 1, true);
+      } else if (timerMode === timerModes.pick) {
+        oled.setCursor(1, 1);
+        oled.writeString(font, 2, `${pickingRadio}.`, 1, true);
+        oled.setCursor(1, 24);
+        oled.writeString(font, 2, radios[pickingRadio].name, 1, true);
+      } else if (timerMode === timerModes.title) {
+        oled.setCursor(1, 1);
+        oled.writeString(font, 2, title, 1, true);
+      }
+    } else {
+      oled.setCursor(1, 1);
+      oled.writeString(font, 2, 'NO RADIOS! Visit the web app', 1, true);
+    }
+  }
+
+  setTimer(mode, duration) {
+    this.clearTimer(false);
+    displayTimer = setTimeout(() => {
+      if (timerMode === timerModes.pick) {
+        pickingRadio = playingRadio;
+      }
+      displayTimer = null;
+      timerMode = null;
+      this.refreshDisplay();
+    }, duration);
+    timerMode = mode;
+    this.refreshDisplay();
+  }
+
+  clearTimer(refreshDisplay) {
+    if (displayTimer) {
+      clearTimeout(displayTimer);
+      displayTimer = null;
+      timerMode = null;
+    }
+    if (refreshDisplay) {
+      this.refreshDisplay();
+    }
+  }
+
+  async refreshRadios(pRadios) {
+    if (muted) {
+      muted = false;
+      volume = backupVolume;
+    }
     if (player) {
       player.close();
       player = null;
     }
-    this.radios = radios.concat();
-    this.pickingRadio = 0;
-    this.clearPickTimer();
-    this.clearVolumeTimer();
-    this.play(0);
+    radios = pRadios.concat();
+    pickingRadio = 0;
+    this.clearTimer(false);
+    if (radios.length > 0) {
+      this.play(0);
+    } else {
+      this.refreshDisplay();
+    }
   }
 }
 module.exports = Radio;
+// new Radio({ radios: [] });
+new Radio({ radios: [{ name: 'SingSingBis', url: 'http://stream.sing-sing.org:8000/singsing128' }] });
