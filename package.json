@@ -1,6 +1,6 @@
 {
   "name": "piwebradio",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Control and monitor your PiWebRadio DIY device",
   "main": "src/index.js",
   "author": "kevincastejon",
