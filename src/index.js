@@ -6,7 +6,9 @@ const Oled = require('oled-i2c-bus');
 const font = require('oled-font-5x7');
 const convert = require('@daisy-electronics/pin-converter');
 const IsItConnected = require('is-it-connected');
-// Components
+
+const isItConnected = new IsItConnected();
+// Hardware
 let player; // Sound
 let oled; // Screen
 let volumeKnob; // Volume knob
@@ -102,15 +104,15 @@ class Radio {
       }
     });
     radios = config.radios;
-    IsItConnected.on('online', () => {
+    isItConnected.on('online', () => {
       console.log('online');
       this.refreshRadios(radios);
     });
-    IsItConnected.on('offline', () => {
+    isItConnected.on('offline', () => {
       console.log('offline');
       this.refreshDisplay();
     });
-    IsItConnected.watch();
+    isItConnected.watch();
   }
 
   async play(radioId) {
@@ -186,7 +188,7 @@ class Radio {
   refreshDisplay() {
     oled.clearDisplay();
     if (radios.length > 0) {
-      if (!IsItConnected.connected) {
+      if (!isItConnected.connected) {
         oled.setCursor(1, 24);
         oled.writeString(font, 2, 'NO INTERNET', 1, true);
       } else if (muted) {
@@ -258,5 +260,3 @@ class Radio {
   }
 }
 module.exports = Radio;
-// new Radio({ radios: [] });
-new Radio({ radios: [{ name: 'SingSingBis', url: 'http://stream.sing-sing.org:8000/singsing128' }] });
