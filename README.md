@@ -18,8 +18,8 @@ yarn start
 ```
 
 ### API
-- constructor(config)   
-  - config : Object
+- constructor(config={})   
+  - config : Object - (optional)
   {
     - volumeKnobClkPin : int - The volume knob clock pin. default = 11
     - volumeKnobDataPin : int - The volume knob data pin. default = 13
