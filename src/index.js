@@ -34,12 +34,12 @@ let config; // Hardware and starting config
 class Radio {
   constructor(pConfig = {}) {
     config = {
-      volumeKnobPinA: pConfig.volumeKnobPinA || 11,
-      volumeKnobPinB: pConfig.volumeKnobPinB || 13,
-      volumeKnobPinButton: pConfig.volumeKnobPinButton || 15,
-      channelKnobPinA: pConfig.channelKnobPinA || 16,
-      channelKnobPinB: pConfig.channelKnobPinB || 18,
-      channelKnobPinButton: pConfig.channelKnobPinButton || 22,
+      volumeKnobClkPin: pConfig.volumeKnobClkPin || 11,
+      volumeKnobDataPin: pConfig.volumeKnobDataPin || 13,
+      volumeKnobSwitchPin: pConfig.volumeKnobSwitchPin || 15,
+      channelKnobClkPin: pConfig.channelKnobClkPin || 16,
+      channelKnobDataPin: pConfig.channelKnobDataPin || 18,
+      channelKnobSwitchPin: pConfig.channelKnobSwitchPin || 22,
       lcdWidth: pConfig.lcdWidth || 128,
       lcdHeight: pConfig.lcdHeight || 64,
       lcdAddress: pConfig.lcdAddress || 0x3C,
@@ -53,12 +53,12 @@ class Radio {
       height: config.lcdHeight,
       address: config.lcdAddress,
     });
-    volumeKnob = new Rotary(convert(`physical${config.volumeKnobPinA}`, 'wiringPi'),
-      convert(`physical${config.volumeKnobPinB}`, 'wiringPi'),
-      convert(`physical${config.volumeKnobPinButton}`, 'wiringPi'));
-    channelKnob = new Rotary(convert(`physical${config.channelKnobPinA}`, 'wiringPi'),
-      convert(`physical${config.channelKnobPinB}`, 'wiringPi'),
-      convert(`physical${config.channelKnobPinButton}`, 'wiringPi'));
+    volumeKnob = new Rotary(convert(`physical${config.volumeKnobClkPin}`, 'wiringPi'),
+      convert(`physical${config.volumeKnobDataPin}`, 'wiringPi'),
+      convert(`physical${config.volumeKnobSwitchPin}`, 'wiringPi'));
+    channelKnob = new Rotary(convert(`physical${config.channelKnobClkPin}`, 'wiringPi'),
+      convert(`physical${config.channelKnobDataPin}`, 'wiringPi'),
+      convert(`physical${config.channelKnobSwitchPin}`, 'wiringPi'));
     maxVolume = config.volumeLimiter;
     volume = config.startingVolume;
     oled.clearDisplay();
@@ -105,11 +105,9 @@ class Radio {
     });
     radios = config.radios;
     isItConnected.on('online', () => {
-      console.log('online');
       this.refreshRadios(radios);
     });
     isItConnected.on('offline', () => {
-      console.log('offline');
       this.refreshDisplay();
     });
     isItConnected.watch();
@@ -147,7 +145,6 @@ class Radio {
   }
 
   showTitle() {
-    console.log('showTitle');
     this.setTimer(timerModes.title, 3000);
   }
 
