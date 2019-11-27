@@ -24,5 +24,13 @@
     "eslint": "^6.5.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevincastejon/js-raspberrypi-piwebradio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kevincastejon/js-raspberrypi-piwebradio/issues"
+  },
+  "homepage": "https://github.com/kevincastejon/js-raspberrypi-piwebradio#readme"
 }
