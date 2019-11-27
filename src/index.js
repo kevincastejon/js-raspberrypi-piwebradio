@@ -87,10 +87,12 @@ class Radio {
       }
     });
     channelKnob.on('pressed', () => {
-      debugTimer = setTimeout(() => {
-        debugTimer = null;
-        this.refreshRadios(radios);
-      }, 4000);
+      if (!muted){
+        debugTimer = setTimeout(() => {
+          debugTimer = null;
+          this.refreshRadios(radios);
+        }, 4000);
+      }
     });
     channelKnob.on('released', () => {
       if (debugTimer && !muted && radios.length > 0) {
