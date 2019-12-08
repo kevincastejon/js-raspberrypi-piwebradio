@@ -1,20 +1,15 @@
-# piwebradio
+# raspberrypi-piwebradio
 
 The PiWebRadio raspberry core app
 
 ### Run dev
 ```
-yarn dev
+npm run dev
 ```
 
-### Build for prod
+### Run prod
 ```
-yarn build
-```
-
-### Build and start
-```
-yarn start
+npm start
 ```
 
 ### API
