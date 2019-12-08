@@ -1,5 +1,5 @@
 {
-  "name": "piwebradio",
+  "name": "raspberrypi-piwebradio",
   "version": "1.17.0",
   "description": "Control and monitor your PiWebRadio DIY device",
   "main": "src/index.js",
