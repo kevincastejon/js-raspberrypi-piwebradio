@@ -159,7 +159,7 @@ class Radio {
 
   setVolumeAndDisplay(pVolume) {
     this.setVolume(pVolume);
-    this.setTimer(timerModes.volume, 3000);
+    this.refreshDisplay();
   }
 
   mute() {
@@ -186,24 +186,26 @@ class Radio {
     if (radios.length > 0) {
       if (!isItConnected.connected) {
         oled.firstLine = '';
-        oled.thirdLine = '';
         oled.secondLine = 'NO INTERNET';
-      } else if (muted) {
-        oled.firstLine = '';
-        oled.thirdLine = '';
-        oled.secondLine = 'MUTE';
+        // } else if (muted) {
+        //   oled.firstLine = `        Vol:${muted?'MUTE':volume}`;
+        //   oled.secondLine = 'MUTE';
+        //   oled.thirdLine = '';
       } else if (!timerMode) {
-        oled.firstLine = '';
-        oled.thirdLine = title === 'no info' ? '' : title;
+        oled.firstLine = `          Vol:${muted ? 'MUTE' : volume}`;
+        console.log(oled.thirdLine, title);
+        if (oled.thirdLine !== title) {
+          oled.thirdLine = title === 'no info' ? '' : title;
+        }
         oled.secondLine = radios[playingRadio].name;
-      } else if (timerMode === timerModes.volume) {
-        oled.firstLine = '';
-        oled.thirdLine = '';
-        oled.secondLine = `Vol:${volume}`;
+        // } else if (timerMode === timerModes.volume) {
+        //   oled.firstLine = `        Vol:${muted ? 'MUTE' : volume}`;
+        //   oled.secondLine = `Vol:${volume}`;
+        // oled.thirdLine = '';
       } else if (timerMode === timerModes.pick) {
         oled.firstLine = `${pickingRadio}.`;
-        oled.thirdLine = '';
         oled.secondLine = radios[pickingRadio].name;
+        oled.thirdLine = '';
       }
     } else {
       oled.firstLine = '';
