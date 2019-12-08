@@ -12,16 +12,13 @@
   },
   "dependencies": {
     "@daisy-electronics/pin-converter": "^1.0.1",
-    "dotenv": "^8.1.0",
-    "i2c-bus": "^5.1.0",
     "is-it-connected": "^1.8.0",
     "mpg123": "^0.2.3",
-    "oled-font-5x7": "^1.0.3",
-    "oled-i2c-bus": "^1.0.11",
+    "raspberrypi-oled-text": "^1.10.0",
     "raspberrypi-rotary-encoder": "^1.6.0"
   },
   "devDependencies": {
-    "eslint": "^6.5.1",
+    "eslint": "^6.7.2",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2"
   },
