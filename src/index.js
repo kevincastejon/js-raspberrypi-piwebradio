@@ -237,6 +237,7 @@ class Radio {
       volume = backupVolume;
     }
     if (player) {
+      player.stop();
       player.close();
       player = null;
     }
