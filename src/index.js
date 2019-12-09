@@ -189,7 +189,7 @@ class Radio {
         oled.firstLine = '';
         oled.secondLine = 'NO INTERNET';
       } else if (!timerMode) {
-        oled.firstLine = `          Vol:${muted ? 'MUTE' : volume}`;
+        oled.firstLine = `    Vol:${muted ? 'MUTE' : volume}`;
         if (oled.thirdLine !== title) {
           oled.thirdLine = title === 'no info' ? '' : title;
         }
