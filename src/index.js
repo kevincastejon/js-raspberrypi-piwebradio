@@ -115,6 +115,7 @@ class Radio {
     playingRadio = radioId;
     if (player) {
       player.removeAllListeners('format');
+      player.stop();
       player.close();
     }
     player = new mpg.MpgPlayer();
@@ -187,23 +188,14 @@ class Radio {
       if (!isItConnected.connected) {
         oled.firstLine = '';
         oled.secondLine = 'NO INTERNET';
-        // } else if (muted) {
-        //   oled.firstLine = `        Vol:${muted?'MUTE':volume}`;
-        //   oled.secondLine = 'MUTE';
-        //   oled.thirdLine = '';
       } else if (!timerMode) {
         oled.firstLine = `          Vol:${muted ? 'MUTE' : volume}`;
-        console.log(oled.thirdLine, title);
         if (oled.thirdLine !== title) {
           oled.thirdLine = title === 'no info' ? '' : title;
         }
         oled.secondLine = radios[playingRadio].name;
-        // } else if (timerMode === timerModes.volume) {
-        //   oled.firstLine = `        Vol:${muted ? 'MUTE' : volume}`;
-        //   oled.secondLine = `Vol:${volume}`;
-        // oled.thirdLine = '';
       } else if (timerMode === timerModes.pick) {
-        oled.firstLine = `${pickingRadio}.`;
+        oled.firstLine = `${pickingRadio + 1}.`;
         oled.secondLine = radios[pickingRadio].name;
         oled.thirdLine = '';
       }
