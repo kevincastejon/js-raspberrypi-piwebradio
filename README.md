@@ -35,7 +35,7 @@ npm start
   - radios : []string             An array of radio object.
 
 
-### Wiring
+### Default wiring
 
 - Volume knob + : 1
 - Volume knob - : 9
