@@ -37,17 +37,17 @@ npm start
 
 ### Wiring
 
-Volume knob + : 1
-Volume knob - : 9
-Volume knob CLOCK : 11
-Volume knob DATA : 13
-Volume knob SWITCH : 15
-Select knob + : 17
-Select knob - : 14
-Select knob CLOCK : 16
-Select knob DATA : 18
-Select knob SWITCH : 22
-Screen + : 4
-Screen - : 6
-Screen SDA : 3
-Screen SCL : 5
+- Volume knob + : 1
+- Volume knob - : 9
+- Volume knob CLOCK : 11
+- Volume knob DATA : 13
+- Volume knob SWITCH : 15
+- Select knob + : 17
+- Select knob - : 14
+- Select knob CLOCK : 16
+- Select knob DATA : 18
+- Select knob SWITCH : 22
+- Screen + : 4
+- Screen - : 6
+- Screen SDA : 3
+- Screen SCL : 5
