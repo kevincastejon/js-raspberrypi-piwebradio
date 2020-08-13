@@ -14,7 +14,7 @@
     "@daisy-electronics/pin-converter": "^1.0.1",
     "is-it-connected": "^1.8.0",
     "mpg123": "^0.2.3",
-    "raspberrypi-oled-text": "^1.11.0",
+    "raspberrypi-oled-text": "^1.13.0",
     "raspberrypi-rotary-encoder": "^1.7.0"
   },
   "devDependencies": {
