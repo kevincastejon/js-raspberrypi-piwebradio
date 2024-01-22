@@ -16,7 +16,7 @@
     "is-it-connected": "^1.8.0",
     "mpg123": "^0.2.3",
     "raspberrypi-oled-text": "^1.13.0",
-    "raspberrypi-rotary-encoder": "^1.11.0"
+    "raspberrypi-rotary-encoder": "^1.12.0"
   },
   "devDependencies": {
     "eslint": "^6.7.2",
